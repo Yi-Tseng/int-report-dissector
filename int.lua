@@ -86,7 +86,8 @@ function dissect_fixed_report(tvb, tree)
     payload_tree:add(field, tvb(off, len))
   end
   local nproto = bit.band(tvb(0,1):uint(), 0x0f);
-  return nproto, tvb(12):tvb()
+  local ig_tstamp = tvb(8,4):uint()
+  return nproto, tvb(12):tvb(), ig_tstamp
 end
 
 function dissect_drop_report(tvb, tree)
@@ -99,25 +100,27 @@ function dissect_drop_report(tvb, tree)
   return tvb(12):tvb()
 end
 
-function dissect_local_report(tvb, tree)
+function dissect_local_report(tvb, tree, ig_tstamp)
   local payload_tree = tree:add(proto_int_local_report, tvb(0, 16))
   for i, field in ipairs(local_report_fields) do
     local off = local_report_fields_offset_len[i][1]
     local len = local_report_fields_offset_len[i][2]
     payload_tree:add(field, tvb(off, len))
   end
+  local eg_tstamp = tvb(12,4):uint()
+  payload_tree:add(tvb(12,4), "Hop Latency: ", (eg_tstamp - ig_tstamp))
   return tvb(16):tvb()
 end
 
 -- The main dissector
 function proto_int_fixed.dissector(tvb, pinfo, tree)
   pinfo.cols.protocol = "INT"
-  local nproto, next_tvb = dissect_fixed_report(tvb, tree)
+  local nproto, next_tvb, ig_tstamp = dissect_fixed_report(tvb, tree)
 
   if nproto == 1 then
     next_tvb = dissect_drop_report(next_tvb, tree)
   elseif nproto == 2 then
-    next_tvb = dissect_local_report(next_tvb, tree)
+    next_tvb = dissect_local_report(next_tvb, tree, ig_tstamp)
   end
 
   -- The rast bytes are Ethernet, use builtin dissector
