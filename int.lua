@@ -114,7 +114,6 @@ end
 
 -- The main dissector
 function proto_int_fixed.dissector(tvb, pinfo, tree)
-  pinfo.cols.protocol = "INT"
   local nproto, next_tvb, ig_tstamp = dissect_fixed_report(tvb, tree)
 
   if nproto == 1 then
@@ -126,6 +125,7 @@ function proto_int_fixed.dissector(tvb, pinfo, tree)
   -- The rast bytes are Ethernet, use builtin dissector
   local eth_dis = Dissector.get("eth_withoutfcs")
   eth_dis:call(next_tvb, pinfo, tree)
+  pinfo.cols["protocol"] = "INT - " .. tostring(pinfo.cols["protocol"])
 end
 
 udp_table = DissectorTable.get("udp.port"):add(32766, proto_int_fixed)
